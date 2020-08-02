@@ -1,27 +1,12 @@
 package auth
 
 import (
-	"net/http"
 	"os"
 	"time"
 
-	jwtmiddleware "github.com/auth0/go-jwt-middleware"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/auth0/go-jwt-middleware"
+	"github.com/dgrijalva/jwt-go"
 )
-
-var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	claims := token.Claims.(jwt.MapClaims)
-	claims["admin"] = true
-	claims["name"] = "odmishien"
-	claims["iat"] = time.Now()
-	claims["exp"] = time.Now().Add(time.Hour * 1).Unix()
-
-	tokenString, _ := token.SignedString([]byte(os.Getenv("SIGNINGKEY")))
-
-	w.Write([]byte(tokenString))
-})
 
 var JwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
@@ -29,3 +14,17 @@ var JwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	},
 	SigningMethod: jwt.SigningMethodHS256,
 })
+
+func GetNewToken(id uint, email string) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	claims := token.Claims.(jwt.MapClaims)
+	claims["id"] = id
+	claims["email"] = email
+	claims["iat"] = time.Now()
+	claims["exp"] = time.Now().Add(time.Hour * 1).Unix()
+
+	tokenString, _ := token.SignedString([]byte(os.Getenv("SIGNINGKEY")))
+
+	return tokenString, nil
+}

@@ -1,26 +1,40 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/odmishien/go-auth-playground/auth"
+	"github.com/odmishien/go-auth-playground/database"
+	"github.com/odmishien/go-auth-playground/handlers"
 )
 
 func main() {
-	http.Handle("/public", publicHandler)
-	http.Handle("/private", auth.JwtMiddleware.Handler(privateHandler))
-	http.Handle("/auth", auth.GetTokenHandler)
+	// setting for database
+	var databaseConfig = database.DatabaseConfig{
+		User:     "root",
+		Password: "",
+		Host:     "localhost",
+		Port:     "3306",
+		Database: "go_auth_playground",
+		Debug:    true,
+	}
+
+	// init database
+	db, err := database.InitDatabase(databaseConfig)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	userHandler := handlers.UserHandler{
+		Db: db,
+	}
+
+	// routing & serve
+	http.Handle("/signup", http.HandlerFunc(userHandler.PreCreateUser))
+	http.Handle("/verify", auth.JwtMiddleware.Handler(http.HandlerFunc(userHandler.CreateUser)))
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
-		panic("can't ListenAndServe")
+		panic(err.Error())
 	}
 }
-
-var publicHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "This is Public endpoint.")
-})
-
-var privateHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "This is Private endpoint")
-})
