@@ -23,7 +23,7 @@ func InitDatabase(config DatabaseConfig) (db *gorm.DB, err error) {
 	if db, err = gorm.Open("mysql", param); err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&models.User{})
+	db.AutoMigrate(&models.User{}, &models.OneTimeScript{})
 	db.LogMode(config.Debug)
 	return db, nil
 }

@@ -6,7 +6,6 @@ import (
 
 type User struct {
 	gorm.Model
-	Email string
+	Email    string
 	Password string
-	Activated bool
 }

@@ -3,10 +3,10 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/jinzhu/gorm"
 	"github.com/odmishien/go-auth-playground/auth"
 	"github.com/odmishien/go-auth-playground/models"
@@ -42,29 +42,38 @@ func (h *UserHandler) PreCreateUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
+	token := r.FormValue("token")
 	if password == "" {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500 - Please Set Password!"))
 		return
 	}
-	user := r.Context().Value("user")
-	id, err := strconv.ParseInt(fmt.Sprintf("%.f", user.(*jwt.Token).Claims.(jwt.MapClaims)["id"]), 10, 64)
 
-	if err != nil {
+	// check OneTimeScript is valid
+	var t = models.OneTimeScript{}
+	if err := h.Db.Where("token = ?", token).First(&t).Error; gorm.IsRecordNotFoundError(err) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500 - token is not valid!"))
 		return
 	}
-	var u = models.User{}
-	if err := h.Db.First(&u, id).Error; err != nil {
+
+	// hash Password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("500 - user is not found!"))
+		w.Write([]byte("500 - Password cannot use!"))
 		return
 	}
-	fmt.Printf("%#v\n", u)
-	// TODO: 平文で保存してるのでダメ
-	u.Password = password
-	u.Activated = true
-	h.Db.Save(&u)
+
+	var u = models.User{
+		Email:    t.Email,
+		Password: string(hashedPassword),
+	}
+	if err := h.Db.Create(&u).Error; err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Can't Create New User!"))
+		return
+	}
+
 	fmt.Fprintf(w, "You are logged in as %s", u.Email)
 }
