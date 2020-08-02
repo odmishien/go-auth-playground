@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
@@ -22,17 +23,21 @@ func (h *UserHandler) PreCreateUser(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("500 - Please Set Email!"))
 		return
 	}
-	var u = models.User{Email: email, Activated: false}
 
-	h.Db.Create(&u)
-
-	token, err := auth.GetNewToken(u.ID, u.Email)
+	token, err := auth.GetNewOneTimeToken(email, time.Now().Add(1*time.Hour))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500 - Can't Create New Token!"))
 		return
 	}
-	w.Write([]byte(token))
+
+	if err := h.Db.Create(&token).Error; err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - Can't Create New Token!"))
+		return
+	}
+
+	w.Write([]byte(token.Token))
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {

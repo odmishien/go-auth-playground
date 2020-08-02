@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 
-	"github.com/odmishien/go-auth-playground/auth"
 	"github.com/odmishien/go-auth-playground/database"
 	"github.com/odmishien/go-auth-playground/handlers"
 )
@@ -32,7 +31,7 @@ func main() {
 
 	// routing & serve
 	http.Handle("/signup", http.HandlerFunc(userHandler.PreCreateUser))
-	http.Handle("/verify", auth.JwtMiddleware.Handler(http.HandlerFunc(userHandler.CreateUser)))
+	http.Handle("/verify", http.HandlerFunc(userHandler.CreateUser))
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		panic(err.Error())
